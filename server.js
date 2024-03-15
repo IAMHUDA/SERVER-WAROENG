@@ -1,7 +1,6 @@
 const express = require("express");
 const mysql = require('mysql');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(cors());
@@ -22,51 +21,44 @@ db.connect((err) => {
     console.log('Connected to database.');
 });
 
-app.post('/signup', async (req, res) => {
+app.post('/signup', (req, res) => {
     const { email, password } = req.body;
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
         const sql = "INSERT INTO login (email, password) VALUES (?, ?)";
-        db.query(sql, [email, hashedPassword], (err, result) => {
+        db.query(sql, [email, password], (err, result) => {
             if (err) {
                 console.error('Error inserting data: ' + err.stack);
-                return res.json("Error");
+                return res.json({ success: false, message: "Failed to register user." });
             }
             console.log('Data inserted successfully.');
-            return res.json(result);
+            return res.json({ success: true, message: "User registered successfully." });
         });
     } catch (err) {
-        console.error('Error hashing password: ' + err.stack);
-        return res.json("Error");
+        console.error('Error inserting data: ' + err.stack);
+        return res.json({ success: false, message: "Failed to register user." });
     }
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', (req, res) => {
     const { email, password } = req.body;
     try {
-        const sql = "SELECT * FROM login WHERE `email` = ?";
-        db.query(sql, [email], async (err, result) => {
+        const sql = "SELECT * FROM login WHERE `email` = ? AND `password` = ?";
+        db.query(sql, [email, password], (err, result) => {
             if (err) {
                 console.error('Error querying data: ' + err.stack);
-                return res.json("Error");
+                return res.json({ success: false, message: "Error" });
             }
             if (result.length > 0) {
-                const match = await bcrypt.compare(password, result[0].password);
-                if (match) {
-                    console.log('Login successful.');
-                    return res.json(result);
-                } else {
-                    console.log('Invalid password.');
-                    return res.json("Invalid password");
-                }
+                console.log('Login successful.');
+                return res.json({ success: true, message: "Login successful.", user: result[0] });
             } else {
-                console.log('User not found.');
-                return res.json("User not found");
+                console.log('Invalid email or password.');
+                return res.json({ success: false, message: "Invalid email or password." });
             }
         });
     } catch (err) {
-        console.error('Error comparing password: ' + err.stack);
-        return res.json("Error");
+        console.error('Error querying data: ' + err.stack);
+        return res.json({ success: false, message: "Error" });
     }
 });
 
